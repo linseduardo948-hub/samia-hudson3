@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sâmia & Hudson</title>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Jost:wght@300;400;500&family=Pinyon+Script&display=swap" rel="stylesheet">
+<style>
+  /* Conceito: convite interativo em tela única. Envelope rosé com lacre vinho; ao tocar, o cartão sobe e abre a página com os detalhes. */
+  :root {
+    color-scheme: light;
+    --paper: #fbfbf9;
+    --ink: #2a4536;
+    --muted: #6f8a79;
+    --rose: #b7d5c1;
+    --rose-deep: #a5c7b1;
+    --wine: #2f4a3a;
+    --line: #dbe5de;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --script: "Pinyon Script", "Snell Roundhand", cursive;
+    --sans: "Jost", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font-family: var(--serif); min-height: 100%; overflow-x: hidden; }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--wine); outline-offset: 4px; }
+
+  .label { font-family: var(--sans); font-weight: 400; font-size: .72rem; letter-spacing: .32em; text-transform: uppercase; color: var(--muted); }
+  .names { font-family: var(--script); font-weight: 400; color: var(--ink); line-height: 1.05; text-wrap: balance; }
+
+  /* ---------- Palco do envelope ---------- */
+  #stage { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 12vh 16px 7vh; background: var(--paper); transition: opacity .9s ease, visibility .9s; text-align: center; }
+  #stage.done { opacity: 0; visibility: hidden; }
+  .stage-top { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+  .stage-top .names { font-size: clamp(2.6rem, 11vw, 4.2rem); }
+  .stage-bottom { display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+  .stage-bottom .date { font-family: var(--sans); font-weight: 300; letter-spacing: .28em; font-size: .95rem; text-transform: uppercase; }
+  .hint { font-family: var(--sans); font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+  .hint b { font-weight: 500; color: var(--ink); }
+
+  .env-btn { background: none; border: 0; padding: 0; cursor: pointer; perspective: 900px; -webkit-tap-highlight-color: transparent; }
+  .env { position: relative; width: min(72vw, 300px); aspect-ratio: 3 / 2; filter: drop-shadow(0 14px 22px rgba(36, 70, 52, .2)); }
+  .env .back { position: absolute; inset: 0; background: var(--rose-deep); border-radius: 3px; }
+  .env .card { position: absolute; left: 6%; right: 6%; top: 8%; bottom: 8%; background: #f4f9f5; display: grid; place-items: center; font-family: var(--script); font-size: 2rem; color: var(--wine); transition: transform 1s cubic-bezier(.5, 0, .2, 1) .35s; }
+  .env .pocket { position: absolute; inset: 0; background: var(--rose); clip-path: polygon(0 0, 50% 52%, 100% 0, 100% 100%, 0 100%); border-radius: 3px; }
+  .env .flap { position: absolute; left: 0; right: 0; top: 0; height: 55%; background: #c6e0cf; clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; transition: transform .7s ease, z-index 0s .35s; z-index: 3; backface-visibility: visible; }
+  .env .seal { position: absolute; left: 50%; top: 52%; width: 22%; aspect-ratio: 1; translate: -50% -50%; z-index: 4; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #3f6150, var(--wine) 60%, #1c3629); color: #e3f0e8; display: grid; place-items: center; font-family: var(--serif); font-style: italic; font-size: clamp(.6rem, 2.6vw, .8rem); line-height: 1.15; text-align: center; box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .08), 0 3px 8px rgba(0, 0, 0, .3); transition: opacity .3s; animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { scale: 1.07; } }
+  .env-btn:hover .seal { animation-play-state: paused; }
+  .opened .seal { opacity: 0; animation: none; }
+  .opened .flap { transform: rotateX(180deg); z-index: 1; }
+  .opened .card { transform: translateY(-48%); }
+  #stage.opening .hint { opacity: 0; }
+  .hint { transition: opacity .4s; }
+
+  /* ---------- Convite ---------- */
+  main { max-width: 34rem; margin: 0 auto; padding: 4.5rem 16px 4rem; display: flex; flex-direction: column; align-items: center; gap: 3rem; text-align: center; opacity: 0; transition: opacity 1.2s ease .3s; }
+  body.revealed main { opacity: 1; }
+  body:not(.revealed) { height: 100vh; overflow: hidden; }
+  .orn { width: 56px; height: 1px; background: var(--wine); position: relative; }
+  .orn::after { content: ""; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; border: 1px solid var(--wine); background: var(--paper); rotate: 45deg; translate: -50% -50%; }
+  .hero { display: flex; flex-direction: column; align-items: center; gap: 1.6rem; }
+  .hero .names { font-size: clamp(3.4rem, 15vw, 5.4rem); }
+  .hero .names span { display: block; }
+  .hero .amp { font-size: .7em; color: var(--wine); }
+  .lead { font-size: 1.3rem; line-height: 1.55; max-width: 26rem; margin: 0; text-wrap: balance; }
+  .bigdate { font-size: 1.7rem; letter-spacing: .02em; margin: 0; }
+
+  .time-box { width: min(100%, 17rem); border: 1px solid var(--line); padding: 1.3rem 1rem; display: flex; flex-direction: column; gap: .8rem; align-items: center; }
+  .time-box .row { display: flex; gap: 1rem; align-items: baseline; font-family: var(--sans); font-size: .8rem; letter-spacing: .22em; text-transform: uppercase; }
+  .time-box .row strong { font-weight: 500; font-size: 1.05rem; letter-spacing: .12em; }
+  .time-box .dow { font-size: 1.15rem; font-style: italic; font-family: var(--serif); letter-spacing: 0; text-transform: none; }
+  .link-sm { font-family: var(--sans); font-size: .62rem; letter-spacing: .26em; text-transform: uppercase; color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+  .link-sm:hover { color: var(--wine); border-color: var(--wine); }
+
+  .block { width: 100%; border-top: 1px solid var(--line); padding-top: 2.4rem; display: flex; flex-direction: column; align-items: center; gap: .9rem; }
+  .block h2 { margin: .3rem 0 0; font-weight: 500; font-size: 1.85rem; text-wrap: balance; }
+  .block p { margin: 0; font-size: 1.12rem; line-height: 1.55; color: var(--ink); max-width: 27rem; text-wrap: pretty; }
+  .block p.small { font-family: var(--sans); font-weight: 300; font-size: .85rem; color: var(--muted); letter-spacing: .02em; line-height: 1.6; }
+  .swatches { display: flex; gap: .8rem; margin-top: .4rem; }
+  .sw { width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 1px solid var(--line); }
+  .sw { position: relative; } .sw.a { background: #1f2a44; } .sw.a::after { content: ""; position: absolute; left: 50%; top: 50%; width: 70%; height: 2px; background: #c0392b; rotate: 45deg; translate: -50% -50%; }
+
+  .btn { display: inline-flex; align-items: center; gap: .6rem; padding: .95rem 1.6rem; border: 1px solid var(--ink); background: transparent; font-family: var(--sans); font-size: .7rem; letter-spacing: .28em; text-transform: uppercase; text-decoration: none; transition: background .25s, color .25s; margin-top: .5rem; }
+  .btn:hover { background: var(--wine); border-color: var(--wine); color: #fff; }
+  .foot { font-family: var(--script); font-size: 2.2rem; color: #9cb5a2; margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .seal { animation: none !important; }
+    * { transition-duration: .01s !important; transition-delay: 0s !important; }
+  }
+</style>
+
+<section id="stage" aria-label="Envelope do convite">
+  <div class="stage-top">
+    <span class="label">Nosso casamento</span>
+    <div class="names">Sâmia <span style="color:var(--wine)">&amp;</span> Hudson</div>
+  </div>
+
+  <button class="env-btn" id="open" aria-label="Abrir o convite de Sâmia e Hudson">
+    <div class="env" id="env">
+      <div class="back"></div>
+      <div class="card">S&amp;H</div>
+      <div class="pocket"></div>
+      <div class="flap"></div>
+      <div class="seal">clique<br>aqui</div>
+    </div>
+  </button>
+
+  <div class="stage-bottom">
+    <span class="date">05 de dezembro de 2026</span>
+    <span class="label" style="letter-spacing:.3em">Sábado às <b style="color:var(--ink);font-weight:500">17h30</b></span>
+    <span class="hint" style="margin-top:1.2rem">Convite interativo · <b>clique no envelope</b></span>
+  </div>
+</section>
+
+<main id="invite">
+  <header class="hero">
+    <span class="orn" aria-hidden="true"></span>
+    <h1 class="names">
+      <span>Sâmia</span>
+      <span class="amp">&amp;</span>
+      <span>Hudson</span>
+    </h1>
+  </header>
+
+  <p class="lead">Escolhemos viver juntos uma nova história e queremos celebrar esse momento ao lado de quem amamos.</p>
+
+  <p class="bigdate">05 de dezembro de 2026</p>
+
+  <p class="lead">Esperamos você para celebrar conosco este dia tão especial.</p>
+
+  <div class="time-box">
+    <div class="row"><strong>17h30</strong><span>Dezembro</span></div>
+    <span class="dow">Sábado</span>
+    <a class="link-sm" target="_blank" rel="noopener" href="https://calendar.google.com/calendar/render?action=TEMPLATE&text=Casamento+S%C3%A2mia+%26+Hudson&dates=20261205T203000Z/20261206T010000Z&location=Igreja+S%C3%A3o+Gon%C3%A7alo+Macei%C3%B3">Adicionar ao calendário</a>
+  </div>
+
+  <section class="block">
+    <span class="label">Cerimônia</span>
+    <h2>Igreja São Gonçalo</h2>
+    <p class="small">Av. Aristeu de Andrade, 175 — Farol<br>Maceió · AL</p>
+    <a class="link-sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Igreja+S%C3%A3o+Gon%C3%A7alo+Av+Aristeu+de+Andrade+175+Macei%C3%B3">Ver localização</a>
+  </section>
+
+  <section class="block">
+    <span class="label">Recepção</span>
+    <h2>Restaurante Toscana</h2>
+    <p class="small">Av. Rotary, 300-C — Gruta de Lourdes<br>Maceió · AL</p>
+    <a class="link-sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Restaurante+Toscana+Av+Rotary+300-C+Macei%C3%B3">Ver localização</a>
+  </section>
+
+  <section class="block">
+    <span class="label">Traje</span>
+    <h2>Passeio completo</h2>
+    <p class="small">Pedimos, gentilmente, que se evite a cor reservado ao noivo.</p>
+    <span class="label" style="color:var(--wine);margin-top:.4rem">Azul marinho</span>
+    <div class="swatches" aria-label="Azul marinho, cor reservada ao noivo"><span class="sw a"></span></div>
+  </section>
+
+  <section class="block">
+    <span class="label">Para o nosso novo lar</span>
+    <p>Estamos construindo, com carinho, o nosso novo lar e cada detalhe fará parte dessa nova história.</p>
+    <p>Disponibilizamos em nosso site uma lista de presentes com opções escolhidas por nós.</p>
+    <a class="btn" target="_blank" rel="noopener" href="https://noivos.casar.com/samia-hudson?#/one-page/_start" id="gifts">Ver lista de presentes</a>
+  </section>
+
+  <p class="foot" aria-hidden="true">Sâmia &amp; Hudson</p>
+</main>
+
+<script>
+  (function () {
+    var stage = document.getElementById('stage');
+    var btn = document.getElementById('open');
+    var env = document.getElementById('env');
+    var fired = false;
+    function open() {
+      if (fired) return; fired = true;
+      env.classList.add("opened"); stage.classList.add("opening");
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      setTimeout(function () {
+        stage.classList.add('done');
+        document.body.classList.add('revealed');
+        window.scrollTo(0, 0);
+      }, reduce ? 50 : 1700);
+    }
+    btn.addEventListener('click', open);
+  })();
+</script>
+</body>
+</html>
